@@ -10,7 +10,7 @@
 
 ### 1.1 脚本初始化
 
-当执行 `bash train_streamvln_qwen2_vl.sh` 时，训练流程开始：
+当执行 `bash examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh` 时，训练流程开始：
 
 **环境准备**：
 - 脚本首先设置各种环境变量，包括 PyTorch CUDA 内存分配策略、NCCL 通信配置等

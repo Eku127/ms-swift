@@ -154,8 +154,19 @@ class StreamVLNDataset(Dataset):
                 - messages: List of conversation turns
                 - images: List of PIL Images
         """
+        # DEBUG: 只在第一个样本时打印详细信息
+        debug_print = (i == 0)
+        
+        if debug_print:
+            print("\n" + "="*60)
+            print(f"[DEBUG 阶段4.1] StreamVLNDataset.__getitem__({i}) 被调用")
+            print("="*60)
+        
         # Get sample index
         ep_id, ins_id, start_idx = self.data_list[i]
+        
+        if debug_print:
+            print(f"[DEBUG] 样本索引: ep_id={ep_id}, ins_id={ins_id}, start_idx={start_idx}")
         data = self.nav_data[ep_id]
         
         # Get video frames
@@ -186,8 +197,10 @@ class StreamVLNDataset(Dataset):
         current_actions = np.array(actions)[time_ids]
         
         # Sample current frames
-        start_idx_abs = time_ids[0] + 1
-        end_idx_abs = time_ids[-1] + 2
+        # Note: time_ids are indices in the shifted actions array, which directly correspond to video_frames array indices
+        # video_frames[0] = 001.jpg corresponds to actions[0] (shifted), so no offset needed
+        start_idx_abs = time_ids[0]
+        end_idx_abs = time_ids[-1] + 1  # +1 because np.arange doesn't include end
         interval = self.num_future_steps
         
         sample_step_ids = np.arange(start_idx_abs, end_idx_abs, interval, dtype=np.int32)
@@ -203,7 +216,7 @@ class StreamVLNDataset(Dataset):
         history_frame_paths = []
         has_history = False
         if time_ids[0] != 0:
-            current_start_abs = min(time_ids[0] + 1, num_video_frames)
+            current_start_abs = min(time_ids[0], num_video_frames)
             available_history_indices = np.arange(0, current_start_abs)
             num_to_sample = min(self.num_history, len(available_history_indices))
             
@@ -280,6 +293,21 @@ class StreamVLNDataset(Dataset):
             
             action_idx += len(step_actions)
             image_idx += 1
+        
+        # DEBUG: 打印返回值信息
+        if debug_print:
+            print(f"\n[DEBUG] __getitem__ 返回值:")
+            print(f"[DEBUG]   messages 数量: {len(messages)}")
+            for j, msg in enumerate(messages[:3]):  # 只打印前3条
+                content_preview = msg['content'][:50] + '...' if len(msg['content']) > 50 else msg['content']
+                print(f"[DEBUG]     [{j}] {msg['role']}: {content_preview}")
+            if len(messages) > 3:
+                print(f"[DEBUG]     ... 还有 {len(messages)-3} 条消息")
+            print(f"[DEBUG]   images 数量: {len(images)}")
+            if images:
+                print(f"[DEBUG]   第一张图像尺寸: {images[0].size}")
+            print(f"[DEBUG] 这个返回值会被 template.encode() 处理!")
+            print("="*60 + "\n")
         
         return {
             'messages': messages,

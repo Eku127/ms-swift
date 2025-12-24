@@ -49,9 +49,11 @@ ms-swift/
 │       └── vln_trainer.py                          # 新建: VLN 专用 trainer (可选)
 ├── examples/
 │   └── vln/
-│       ├── train_streamvln_qwen2_vl.sh            # 新建: 训练脚本
-│       ├── infer_streamvln_qwen2_vl.sh            # 新建: 推理脚本
-│       └── eval_streamvln_qwen2_vl.sh             # 新建: 评估脚本
+│       └── streamvln/
+│           └── script/
+│               ├── train_streamvln_qwen2_vl.sh    # 新建: 训练脚本
+│               ├── infer_streamvln_qwen2_vl.sh    # 新建: 推理脚本
+│               └── eval_streamvln_qwen2_vl.sh     # 新建: 评估脚本
 └── vln/                                           # 现有的 vln 文件夹
     └── doc/                                        # 文档目录
         ├── streamvln_data_format.md
@@ -69,9 +71,9 @@ ms-swift/
 | `swift/llm/model/__init__.py` | 修改 | 注册 StreamVLN 模型类型 |
 | `swift/llm/dataset/__init__.py` | 修改 | 注册 VLN 数据集类型 |
 | `swift/trainers/vln_trainer.py` | 新建 | VLN 专用训练器（可选，用于特殊需求） |
-| `examples/vln/train_streamvln_qwen2_vl.sh` | 新建 | 训练脚本，配置训练参数 |
-| `examples/vln/infer_streamvln_qwen2_vl.sh` | 新建 | 推理脚本，支持 KV cache |
-| `examples/vln/eval_streamvln_qwen2_vl.sh` | 新建 | 评估脚本 |
+| `examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh` | 新建 | 训练脚本，配置训练参数 |
+| `examples/vln/streamvln/script/infer_streamvln_qwen2_vl.sh` | 新建 | 推理脚本，支持 KV cache |
+| `examples/vln/streamvln/script/eval_streamvln_qwen2_vl.sh` | 新建 | 评估脚本 |
 
 ---
 
@@ -286,7 +288,7 @@ DATASET_MAPPING = {
 
 ### 5. 训练脚本
 
-**位置**: `examples/vln/train_streamvln_qwen2_vl.sh`
+**位置**: `examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh`
 
 #### 配置示例
 
@@ -889,10 +891,10 @@ def prepare_inputs_labels_for_multimodal(...):
 2. **集成测试**
    ```bash
    # 测试完整训练流程
-   bash examples/vln/train_streamvln_qwen2_vl.sh
+   bash examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh
    
    # 测试推理
-   bash examples/vln/infer_streamvln_qwen2_vl.sh
+   bash examples/vln/streamvln/script/infer_streamvln_qwen2_vl.sh
    ```
 
 3. **对比测试**

@@ -51,6 +51,9 @@ class StreamVLNSft(SwiftSft):
     args: StreamVLNTrainArguments
 
     def _get_dataset(self):
+        print("\n" + "="*60)
+        print("[DEBUG 阶段2] _get_dataset() 被调用 - 创建数据集")
+        print("="*60)
         """
         重写数据集获取逻辑，检测 StreamVLN 数据集并创建
         
@@ -74,6 +77,12 @@ class StreamVLNSft(SwiftSft):
             )
             
             if has_streamvln:
+                print(f"[DEBUG] 检测到 StreamVLN 数据集，路径: {paths}")
+                print(f"[DEBUG] VLN 参数:")
+                print(f"[DEBUG]   num_frames = {self.args.num_frames}")
+                print(f"[DEBUG]   num_history = {self.args.num_history}")
+                print(f"[DEBUG]   num_future_steps = {self.args.num_future_steps}")
+                print(f"[DEBUG]   vln_max_samples = {self.args.vln_max_samples}")
                 logger.info(f"Detected StreamVLN dataset(s), creating StreamVLNDataset (paths={paths})")
                 train_dataset = StreamVLNDataset(
                     data_path=data_path,
@@ -105,10 +114,18 @@ class StreamVLNSft(SwiftSft):
         """
         重写后处理逻辑，为 StreamVLNDataset 创建 LazyLLMDataset 包装
         """
+        print("\n" + "="*60)
+        print("[DEBUG 阶段3] _post_process_datasets() 被调用 - 包装数据集")
+        print("="*60)
+        
         from swift.llm.dataset import LazyLLMDataset
         
         args = self.args
         template = self.template
+        
+        print(f"[DEBUG] Template 类型: {type(template).__name__}")
+        print(f"[DEBUG] Template.encode 方法: {template.encode}")
+        print(f"[DEBUG] 这个 encode 方法会将 messages+images 转换为模型输入!")
         
         for i, dataset in enumerate(datasets):
             if dataset is None:
@@ -116,6 +133,8 @@ class StreamVLNSft(SwiftSft):
             
             if isinstance(dataset, StreamVLNDataset):
                 # StreamVLNDataset 需要用 LazyLLMDataset 包装
+                print(f"[DEBUG] 创建 LazyLLMDataset 包装 StreamVLNDataset")
+                print(f"[DEBUG] LazyLLMDataset 在获取数据时会调用 template.encode()")
                 logger.info(f"Wrapping StreamVLNDataset with LazyLLMDataset")
                 datasets[i] = LazyLLMDataset(
                     dataset, 
@@ -162,6 +181,12 @@ class StreamVLNSft(SwiftSft):
 
 def train_main(args: Optional[Union[List[str], StreamVLNTrainArguments]] = None):
     """Main entry point for StreamVLN training."""
+    print("\n" + "="*60)
+    print("[DEBUG 阶段1] train_main() 被调用 - 训练入口")
+    print("="*60)
+    print("[DEBUG] 创建 StreamVLNSft 实例并启动训练...")
+    print("[DEBUG] 训练流程: 初始化 → 加载数据 → 加载模型 → 训练循环")
+    print("="*60 + "\n")
     return StreamVLNSft(args).main()
 
 
