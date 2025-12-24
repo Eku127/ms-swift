@@ -38,7 +38,7 @@
 ### 2. 训练脚本
 
 #### 主训练脚本
-- **`examples/vln/train_streamvln_qwen2_vl.sh`** (120 lines)
+- **`examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh`** (120 lines)
   - VLN 特定参数配置
   - 训练超参数设置
   - DeepSpeed 集成
@@ -116,7 +116,7 @@
 
 ### 2. 修改训练脚本
 
-编辑 `examples/vln/train_streamvln_qwen2_vl.sh`:
+编辑 `examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh`:
 
 ```bash
 VLN_DATA_PATH="/path/to/vln/data"  # 修改为你的数据路径
@@ -127,7 +127,7 @@ VLN_DATA_PATH="/path/to/vln/data"  # 修改为你的数据路径
 ```bash
 conda activate swift-vln
 cd /shared_space/jiangjiajun/workspace/ms-swift
-bash examples/vln/train_streamvln_qwen2_vl.sh
+bash examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh
 ```
 
 ## 验证检查清单
@@ -168,7 +168,7 @@ bash examples/vln/train_streamvln_qwen2_vl.sh
 1. `swift/llm/dataset/streamvln_dataset.py`
 2. `swift/llm/model/model/streamvln_qwen2_vl.py`
 3. `swift/llm/model/model/qwen_streamvln_register.py`
-4. `examples/vln/train_streamvln_qwen2_vl.sh`
+4. `examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh`
 5. `examples/vln/README.md`
 6. `vln/IMPLEMENTATION_SUMMARY.md` (本文件)
 
