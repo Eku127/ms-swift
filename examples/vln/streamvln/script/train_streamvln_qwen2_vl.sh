@@ -1,11 +1,13 @@
 #!/bin/bash
-# StreamVLN Training Script - Qwen2.5-VL
+# StreamVLN Training Script - Qwen2.5-VL (ms-swift)
 # 
-# Usage: bash examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh
-#        or (from ms-swift root): bash examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh
+# Usage:
+#   Single-node: bash examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh
+#   Multi-node:  sbatch examples/vln/streamvln/script/train_streamvln_qwen2_vl.slurm
 #
-# This script trains a StreamVLN model for Visual Language Navigation
-# using Qwen2.5-VL as the base model.
+# This script supports both single-node and multi-node (SLURM) training:
+#   - When run directly with bash: uses single-node configuration
+#   - When run via SLURM srun: automatically detects SLURM environment variables
 #
 # Architecture:
 #   - Model inherits directly from Qwen2.5-VL without modifications
@@ -17,6 +19,16 @@
 # Prerequisites:
 # - Install SwanLab: pip install swanlab
 # - Login to SwanLab: swanlab login (or set --swanlab_token)
+
+# ============================================================================
+# Conda Environment Activation (Required for SLURM jobs)
+# ============================================================================
+# SLURM jobs don't inherit user's shell environment, so we need to activate conda explicitly
+source /home/jiangjiajun/miniconda3/etc/profile.d/conda.sh
+conda activate swift-vln
+
+# Install missing dependencies if needed (run once, then can be commented out)
+# pip install json_repair --quiet
 
 # ============================================================================
 # VLN-Specific Parameters
@@ -39,6 +51,13 @@ MAX_SAMPLES="0"             # Empty or 0 = use all samples, e.g., "1000" = use 1
 # 当前仅支持 Qwen2.5-VL: streamvln_qwen2_5_vl
 MODEL_TYPE="streamvln_qwen2_5_vl"
 MODEL_PATH="Qwen/Qwen2.5-VL-3B-Instruct"  # Base model to extend
+
+# Extract model size from MODEL_PATH (e.g., "7B" or "3B")
+MODEL_SIZE=$(echo "$MODEL_PATH" | grep -oE '[0-9]+B' | tr '[:upper:]' '[:lower:]')
+# Fallback to "3b" if not found
+if [ -z "$MODEL_SIZE" ]; then
+    MODEL_SIZE="3b"
+fi
 
 # VLN Data Paths - MODIFY THESE TO YOUR DATA LOCATIONS
 # Expected format: directory containing annotations.json and video folders
@@ -69,25 +88,78 @@ VLN_DATA_PATH=$(IFS=','; echo "${VLN_DATA_PATHS[*]}")
 #   - Total sequence length: ~8000-12000 tokens
 TRAIN_TYPE="full"          # Training type: full, lora, etc.
 NUM_EPOCHS=1               # Increased for better convergence
-LEARNING_RATE=2e-5         # Lower LR for full fine-tuning (more stable)
+LEARNING_RATE=4e-5         # Lower LR for full fine-tuning (more stable)
 BATCH_SIZE=1               # Per-device batch size (conservative for 16 images)
-GRAD_ACCUM_STEPS=4         # Effective batch size = 1 × 8 = 8
+GRAD_ACCUM_STEPS=4         # Gradient accumulation steps
 MAX_LENGTH=16384           # Optimized for 16 images + text (~8000-12000 tokens)
 
 # ============================================================================
-# Resource Configuration
+# Resource Configuration (Single-node defaults, overridden by SLURM)
 # ============================================================================
-NUM_GPUS=8
-CUDA_DEVICES="0,1,2,3,4,5,6,7"
-MASTER_PORT=29500
+GPUS_PER_NODE=8            # GPUs per node
+MASTER_PORT=29500          # Master port for distributed training
+
+# ============================================================================
+# SLURM Environment Detection
+# ============================================================================
+# Detect if running under SLURM and configure multi-node settings
+if [ -n "$SLURM_JOB_ID" ]; then
+    # ========== SLURM Multi-node Mode ==========
+    echo "=========================================="
+    echo "SLURM Environment Detected"
+    echo "=========================================="
+    
+    # Get node information from SLURM
+    NNODES=$SLURM_NNODES
+    NODE_RANK=$SLURM_PROCID
+    MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
+    HOSTNAME=$(hostname)
+    
+    # Calculate total GPUs across all nodes
+    TOTAL_GPUS=$((NNODES * GPUS_PER_NODE))
+    
+    # Use all GPUs on each node
+    CUDA_DEVICES="0,1,2,3,4,5,6,7"
+    
+    # NCCL debug for multi-node (more verbose for debugging)
+    export NCCL_DEBUG=INFO
+    
+    echo "SLURM Job ID: $SLURM_JOB_ID"
+    echo "Node List: $SLURM_NODELIST"
+    echo "Number of Nodes: $NNODES"
+    echo "This Node: $HOSTNAME (rank $NODE_RANK)"
+    echo "Master Address: ${MASTER_ADDR}:${MASTER_PORT}"
+    echo "GPUs per Node: $GPUS_PER_NODE"
+    echo "Total GPUs: $TOTAL_GPUS"
+    echo "=========================================="
+else
+    # ========== Single-node Mode ==========
+    echo "=========================================="
+    echo "Single-node Mode (no SLURM detected)"
+    echo "=========================================="
+    
+    NNODES=1
+    NODE_RANK=0
+    MASTER_ADDR="localhost"
+    HOSTNAME=$(hostname)
+    TOTAL_GPUS=$GPUS_PER_NODE
+    CUDA_DEVICES="0,1,2,3,4,5,6,7"
+    
+    # NCCL debug for single-node (less verbose)
+    export NCCL_DEBUG=ERROR
+    
+    echo "Host: $HOSTNAME"
+    echo "GPUs: $GPUS_PER_NODE"
+    echo "=========================================="
+fi
 
 # ============================================================================
 # Output Configuration
 # ============================================================================
 # Build experiment name with key hyperparameters and timestamp
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-EFFECTIVE_BATCH_SIZE=$((BATCH_SIZE * GRAD_ACCUM_STEPS * NUM_GPUS))
-EXP_NAME="streamvln-qwen2.5vl-3b-full-${NUM_EPOCHS}epoch-f${NUM_FRAMES}h${NUM_HISTORY}s${NUM_FUTURE_STEPS}-bs${EFFECTIVE_BATCH_SIZE}-lr${LEARNING_RATE}-${TIMESTAMP}"
+EFFECTIVE_BATCH_SIZE=$((BATCH_SIZE * GRAD_ACCUM_STEPS * TOTAL_GPUS))
+EXP_NAME="streamvln-qwen2.5vl-${MODEL_SIZE}-full-${NUM_EPOCHS}epoch-f${NUM_FRAMES}h${NUM_HISTORY}s${NUM_FUTURE_STEPS}-bs${EFFECTIVE_BATCH_SIZE}-lr${LEARNING_RATE}-${TIMESTAMP}"
 OUTPUT_DIR="output/${EXP_NAME}"
 
 SAVE_STEPS=500             # Save checkpoint every 500 steps (adjust based on dataset size)
@@ -148,15 +220,12 @@ SWANLAB_MODE="cloud"       # cloud or local
 # Environment Setup
 # ============================================================================
 # PyTorch CUDA memory allocation strategy
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export PYTORCH_ALLOC_CONF=expandable_segments:True
 
-# NCCL Configuration (for single-node multi-GPU training)
-# Note: This script is for single-node 8-GPU training
-# For multi-node training, add NNODES, NODE_RANK, MASTER_ADDR environment variables
+# NCCL Configuration
 export NCCL_TIMEOUT=1800           # 30 minutes timeout (for large model/data)
-export NCCL_DEBUG=ERROR            # INFO/WARN/ERROR (ERROR for production, INFO for debug)
 export NCCL_SOCKET_IFNAME=^docker0,lo  # Exclude docker and loopback interfaces
-# Performance optimizations for 8-GPU training (from original StreamVLN)
+# Performance optimizations for multi-GPU training (from original StreamVLN)
 export NCCL_BUFFSIZE=2097152       # 2MB buffer for better throughput
 export NCCL_MAX_NCHANNELS=4        # 4 communication channels
 
@@ -182,10 +251,19 @@ echo "Training Configuration:"
 echo "  Epochs: $NUM_EPOCHS"
 echo "  Batch Size: $BATCH_SIZE (per device)"
 echo "  Gradient Accumulation: $GRAD_ACCUM_STEPS"
-echo "  Effective Batch Size: $((BATCH_SIZE * GRAD_ACCUM_STEPS * NUM_GPUS))"
+echo "  Effective Batch Size: $EFFECTIVE_BATCH_SIZE"
 echo "  Learning Rate: $LEARNING_RATE"
 if [ -n "$MAX_SAMPLES" ] && [ "$MAX_SAMPLES" != "0" ] && [ "$MAX_SAMPLES" != "" ]; then
     echo "  Max Samples: $MAX_SAMPLES (limited)"
+fi
+echo "----------------------------------------"
+echo "Distributed Configuration:"
+echo "  Nodes: $NNODES"
+echo "  GPUs per Node: $GPUS_PER_NODE"
+echo "  Total GPUs: $TOTAL_GPUS"
+echo "  Master: ${MASTER_ADDR}:${MASTER_PORT}"
+if [ -n "$SLURM_JOB_ID" ]; then
+    echo "  Node Rank: $NODE_RANK"
 fi
 echo "----------------------------------------"
 echo "Model Component Freezing:"
@@ -264,34 +342,28 @@ TRAIN_ARGS="
 "
 
 # Run training
-# Use torchrun for multi-GPU distributed training (DDP)
-# Single GPU uses python directly, multi-GPU uses torchrun
+# Use torchrun for distributed training (DDP)
 # NOTE: DataParallel is NOT compatible with Qwen2.5-VL due to 3D position embeddings
 export CUDA_VISIBLE_DEVICES=$CUDA_DEVICES
 
 # Change to ms-swift root directory to run training
 cd "$MS_SWIFT_ROOT"
 
-if [ "$NUM_GPUS" -gt 1 ]; then
-    echo "Using torchrun for distributed training (DDP, NUM_GPUS=$NUM_GPUS)"
-    torchrun \
-        --nproc_per_node=$NUM_GPUS \
-        --master_port=$MASTER_PORT \
-        examples/vln/streamvln/trainer.py \
-        $TRAIN_ARGS \
-        --lr_scheduler_kwargs "$LR_SCHEDULER_KWARGS"
-else
-    echo "Using python for single GPU training"
-    python examples/vln/streamvln/trainer.py \
-        $TRAIN_ARGS \
-        --lr_scheduler_kwargs "$LR_SCHEDULER_KWARGS"
-fi
+echo "Launching torchrun on node $NODE_RANK (${HOSTNAME})..."
+torchrun \
+    --nnodes=$NNODES \
+    --node_rank=$NODE_RANK \
+    --nproc_per_node=$GPUS_PER_NODE \
+    --master_addr=$MASTER_ADDR \
+    --master_port=$MASTER_PORT \
+    examples/vln/streamvln/trainer.py \
+    $TRAIN_ARGS \
+    --lr_scheduler_kwargs "$LR_SCHEDULER_KWARGS"
 
 echo "=========================================="
-echo "Training completed!"
+echo "Training completed on node $NODE_RANK (${HOSTNAME})!"
 echo "Model saved to: $OUTPUT_DIR"
 if [ "$USE_SWANLAB" = true ]; then
     echo "View results at: https://swanlab.cn/$SWANLAB_PROJECT/$SWANLAB_EXP_NAME"
 fi
 echo "=========================================="
-

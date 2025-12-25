@@ -130,6 +130,7 @@ result.mp4
 output/
 outputs/
 wandb/
+logs/
 *.out
 benchmarks/
 eval_output/
