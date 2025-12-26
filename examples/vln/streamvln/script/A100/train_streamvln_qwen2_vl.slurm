@@ -12,7 +12,7 @@
 # StreamVLN Training SLURM Script - ms-swift version
 # 
 # Usage: 
-#   sbatch examples/vln/streamvln/script/train_streamvln_qwen2_vl.slurm
+#   sbatch examples/vln/streamvln/script/A100/train_streamvln_qwen2_vl.slurm
 #
 # This script submits a multi-node training job using SLURM.
 # The actual training script will detect SLURM environment and configure accordingly.
@@ -24,5 +24,5 @@ PROJECT_ROOT="/shared_space/jiangjiajun/workspace/ms-swift"
 cd "$PROJECT_ROOT" || exit 1
 
 # Run training script on each node
-srun bash examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh
+srun bash examples/vln/streamvln/script/A100/train_streamvln_qwen2_vl.sh
 
