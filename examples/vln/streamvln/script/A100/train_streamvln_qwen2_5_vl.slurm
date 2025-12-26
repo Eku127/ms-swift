@@ -9,20 +9,19 @@
 #SBATCH --output=/shared_space/jiangjiajun/workspace/ms-swift/logs/streamvln-msswift-%j.out
 #SBATCH --error=/shared_space/jiangjiajun/workspace/ms-swift/logs/streamvln-msswift-%j.err
 
-# StreamVLN Training SLURM Script - ms-swift version
+# StreamVLN Multi-Node Training - SLURM Submission Script
 # 
 # Usage: 
-#   sbatch examples/vln/streamvln/script/A100/train_streamvln_qwen2_vl.slurm
+#   sbatch examples/vln/streamvln/script/A100/train_streamvln_qwen2_5_vl.slurm
 #
-# This script submits a multi-node training job using SLURM.
-# The actual training script will detect SLURM environment and configure accordingly.
+# Configuration:
+#   - Nodes: 2 (modify --nodes above)
+#   - GPUs per node: 8 (modify --gres above)
+#   - Total GPUs: 16
 
-# Set project root directory (absolute path)
 PROJECT_ROOT="/shared_space/jiangjiajun/workspace/ms-swift"
-
-# Change to project root directory
 cd "$PROJECT_ROOT" || exit 1
 
 # Run training script on each node
-srun bash examples/vln/streamvln/script/A100/train_streamvln_qwen2_vl.sh
+srun bash examples/vln/streamvln/script/A100/train_streamvln_qwen2_5_vl_slurm.sh
 

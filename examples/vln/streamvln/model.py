@@ -63,31 +63,29 @@ except Exception:
     pass
 
 
-def get_model_tokenizer_streamvln_qwen2_5_vl(model_dir, *args, **kwargs):
+def get_model_tokenizer_streamvln_qwen2_5_vl(model_dir, model_info, model_kwargs, load_model=True, **kwargs):
     """
     Load StreamVLN Qwen2.5-VL model and processor.
     
     This function is called by ms-swift when loading the registered model.
-    It loads the base Qwen2.5-VL model with our StreamVLN config/class.
+    It uses the standard Qwen2.5-VL loading function to properly handle
+    attn_impl, torch_dtype, and other parameters.
     
     Args:
         model_dir: Path to the model directory (e.g., 'Qwen/Qwen2.5-VL-3B-Instruct')
-        *args, **kwargs: Additional arguments passed by ms-swift
+        model_info: ModelInfo object from ms-swift
+        model_kwargs: Additional kwargs for model loading
+        load_model: Whether to load the model weights
+        **kwargs: Additional arguments including attn_impl, torch_dtype, etc.
         
     Returns:
         tuple: (model, processor)
     """
-    from transformers import AutoProcessor
+    from swift.llm.model.model.qwen import get_model_tokenizer_qwen2_5_vl
     
-    # Load processor (contains tokenizer and image processor)
-    processor = AutoProcessor.from_pretrained(model_dir, trust_remote_code=True)
-    
-    # Load model - use base Qwen2.5-VL since we don't override forward()
-    # The StreamVLN wrapper is mainly for registration and future extensions
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        model_dir,
-        trust_remote_code=True,
-        **kwargs.get('model_kwargs', {})
-    )
-    
-    return model, processor
+    # Use the standard Qwen2.5-VL loader which properly handles:
+    # - attn_impl (flash_attn, sdpa, eager)
+    # - torch_dtype
+    # - automodel_class (Qwen2_5_VLForConditionalGeneration)
+    # - qwen_vl_utils compatibility
+    return get_model_tokenizer_qwen2_5_vl(model_dir, model_info, model_kwargs, load_model, **kwargs)
