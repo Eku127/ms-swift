@@ -2,8 +2,8 @@
 # StreamVLN Training Script - Qwen2.5-VL (ms-swift)
 # 
 # Usage:
-#   Single-node: bash examples/vln/streamvln/script/train_streamvln_qwen2_vl.sh
-#   Multi-node:  sbatch examples/vln/streamvln/script/train_streamvln_qwen2_vl.slurm
+#   Single-node: bash examples/vln/streamvln/script/A100/train_streamvln_qwen2_vl.sh
+#   Multi-node:  sbatch examples/vln/streamvln/script/A100/train_streamvln_qwen2_vl.slurm
 #
 # This script supports both single-node and multi-node (SLURM) training:
 #   - When run directly with bash: uses single-node configuration
@@ -296,7 +296,7 @@ else
 fi
 
 # Build training arguments
-# Note: Script is in script/ subdirectory, so paths are relative to script/
+# Note: Script is in script/A100/ subdirectory, so paths are relative to script/
 # Get the absolute path to the streamvln module directory (parent of script/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STREAMVLN_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
