@@ -11,7 +11,7 @@ set -e  # Exit on error
 # ============================================================================
 # Conda Environment
 # ============================================================================
-source /home/jiangjiajun/miniconda3/etc/profile.d/conda.sh
+source /mnt/data1/home/jiangjiajun/miniconda3/etc/profile.d/conda.sh
 conda activate swift-vln
 
 # ============================================================================
@@ -37,9 +37,9 @@ MODEL_SIZE=${MODEL_SIZE:-"3b"}
 # VLN Data Configuration
 # ============================================================================
 VLN_DATA_PATHS=(
-    "/shared_space/jiangjiajun/data/streamvln_datasets/trajectory_data/R2R"
-    # "/shared_space/jiangjiajun/data/streamvln_datasets/trajectory_data/RxR_new"
-    # "/shared_space/jiangjiajun/data/streamvln_datasets/trajectory_data/EnvDrop"
+    "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/R2R"
+    # "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/RxR_new"
+    # "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/EnvDrop"
 )
 VLN_DATA_PATH=$(IFS=','; echo "${VLN_DATA_PATHS[*]}")
 
@@ -128,7 +128,9 @@ export NCCL_TIMEOUT=1800
 export NCCL_SOCKET_IFNAME=^docker0,lo
 export NCCL_BUFFSIZE=2097152
 export NCCL_MAX_NCHANNELS=4
-export MODELSCOPE_CACHE=/shared_space/jiangjiajun/modelscope_cache
+# ModelScope cache will use default: ~/.cache/modelscope/hub
+# If you want to use a custom cache directory, uncomment and set:
+export MODELSCOPE_CACHE=/mnt/data1/home/jiangjiajun/.cache/modelscope
 export CUDA_VISIBLE_DEVICES=$CUDA_DEVICES
 
 # ============================================================================
