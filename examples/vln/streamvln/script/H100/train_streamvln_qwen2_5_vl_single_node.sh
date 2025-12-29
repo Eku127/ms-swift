@@ -2,7 +2,7 @@
 # StreamVLN Single-Node Training Script - Qwen2.5-VL (ms-swift)
 # 
 # Usage:
-#   bash examples/vln/streamvln/script/A100/train_streamvln_qwen2_5_vl_single_node.sh
+#   bash examples/vln/streamvln/script/H100/train_streamvln_qwen2_5_vl_single_node.sh
 #
 # This script supports single-node training with configurable GPU count.
 
@@ -12,7 +12,7 @@ set -e  # Exit on error
 # Conda Environment
 # ============================================================================
 source /mnt/data1/home/jiangjiajun/miniconda3/etc/profile.d/conda.sh
-conda activate swift-vln
+conda activate swift-vln-train
 
 # ============================================================================
 # GPU Configuration
@@ -38,8 +38,8 @@ MODEL_SIZE=${MODEL_SIZE:-"3b"}
 # ============================================================================
 VLN_DATA_PATHS=(
     "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/R2R"
-    # "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/RxR_new"
-    # "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/EnvDrop"
+    "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/RxR_new"
+    "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/EnvDrop"
 )
 VLN_DATA_PATH=$(IFS=','; echo "${VLN_DATA_PATHS[*]}")
 
@@ -56,8 +56,8 @@ MAX_SAMPLES="0"  # 0 = use all samples
 TRAIN_TYPE="full"
 NUM_EPOCHS=1
 LEARNING_RATE=2e-5
-BATCH_SIZE=1
-GRAD_ACCUM_STEPS=4
+BATCH_SIZE=8
+GRAD_ACCUM_STEPS=1
 MAX_LENGTH=16384
 
 # Model Freezing
@@ -76,6 +76,7 @@ TORCH_COMPILE=false
 WARMUP_RATIO=0.075
 WEIGHT_DECAY=0.
 LR_SCHEDULER_TYPE="cosine_with_min_lr"
+# LR_SCHEDULER_KWARGS='{"min_lr":3.7e-05}'
 LR_SCHEDULER_KWARGS='{"min_lr":1.85e-05}'
 
 # Attention Implementation
