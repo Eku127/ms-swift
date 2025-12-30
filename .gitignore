@@ -141,6 +141,7 @@ vlmeval/
 my_model/
 /data
 result/
+results/
 images
 /custom/
 megatron_output/
