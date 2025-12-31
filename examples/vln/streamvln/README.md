@@ -1,6 +1,6 @@
-# StreamVLN 训练模块
+# StreamVLN 训练与评估模块
 
-本模块提供基于 Qwen2.5-VL 的视觉语言导航（VLN）训练支持，完全利用 ms-swift 框架的原生多模态处理能力。
+本模块提供基于 Qwen2.5-VL 的视觉语言导航（VLN）训练与评估支持，完全利用 ms-swift 框架的原生多模态处理能力。
 
 ---
 
@@ -8,13 +8,25 @@
 
 ```
 examples/vln/streamvln/
-├── __init__.py        # 模块入口：模型注册
-├── arguments.py       # VLN 专属训练参数（用于数据集构建）
-├── dataset.py         # StreamVLN 数据集实现
-├── model.py           # 模型定义（继承 Qwen2.5-VL）
-├── trainer.py         # 自定义训练器入口
-└── script/            # 训练脚本目录
-    └── train_streamvln_qwen2_vl.sh  # 训练启动脚本
+├── __init__.py           # 模块入口：模型注册
+├── arguments.py          # VLN 专属训练参数
+├── dataset.py            # StreamVLN 训练数据集
+├── model.py              # 模型定义 + KV 缓存管理
+├── trainer.py            # 自定义训练器入口
+├── evaluator.py          # VLN 评估器（Habitat 集成）
+├── eval.py               # 评估入口（支持单机/分布式）
+├── check_env.py          # 环境检测脚本
+├── config/               # Habitat 配置
+│   └── vln_r2r.yaml
+├── habitat_extensions/   # Habitat 扩展组件
+│   ├── measures.py       # VLN 评测指标
+│   └── maps.py           # 地图可视化
+└── script/H100/          # 运行脚本
+    ├── train/
+    │   └── train_streamvln_qwen2_5_vl_single_node.sh
+    └── eval/
+        ├── eval_streamvln_qwen2_5_vl_8gpu.sh
+        └── eval_streamvln_qwen2_5_vl_distributed.sh
 ```
 
 ### 各文件职责
@@ -24,8 +36,10 @@ examples/vln/streamvln/
 | `__init__.py` | 向 ms-swift 注册模型 | `register_model()` |
 | `arguments.py` | 定义 VLN 数据集参数 | `StreamVLNTrainArguments` |
 | `dataset.py` | 加载 VLN 数据，构建多轮对话 | `StreamVLNDataset` |
-| `model.py` | 模型定义（直接继承 Qwen2.5-VL） | `StreamVLNQwen25VLForConditionalGeneration` |
+| `model.py` | 模型定义 + 流式推理缓存 | `StreamVLNQwen25VLForConditionalGeneration` |
 | `trainer.py` | 自定义 SFT 训练流程 | `StreamVLNSft`, `train_main()` |
+| `evaluator.py` | Habitat 环境评估器 | `VLNEvaluator` |
+| `eval.py` | 评估入口（单机/分布式） | `main()` |
 
 ---
 
@@ -224,7 +238,102 @@ Loss 计算 → 反向传播 → 参数更新
 
 ---
 
-## 七、扩展指南
+## 七、Habitat 评估
+
+### 环境准备
+
+评估需要 Habitat 环境，请使用 `swift-vln-eval` conda 环境：
+
+```bash
+conda activate swift-vln-eval
+python examples/vln/streamvln/check_env.py  # 检测环境
+```
+
+### 评估命令
+
+```bash
+# 单进程评估
+python -m examples.vln.streamvln.eval \
+    --model_path /path/to/checkpoint \
+    --eval_split val_unseen
+
+# 分布式评估（8 GPU 并行，速度提升 8 倍）
+torchrun --nproc_per_node=8 -m examples.vln.streamvln.eval \
+    --model_path /path/to/checkpoint \
+    --eval_split val_unseen \
+    --distributed
+
+# 保存导航可视化视频
+python -m examples.vln.streamvln.eval \
+    --model_path /path/to/checkpoint \
+    --eval_split val_unseen \
+    --save_video \
+    --output_dir ./results/eval_with_video
+```
+
+或使用脚本：
+
+```bash
+MODEL_PATH=/path/to/checkpoint \
+    bash examples/vln/streamvln/script/H100/eval/eval_streamvln_qwen2_5_vl_distributed.sh
+```
+
+### 评估参数
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--model_path` | 必填 | 训练好的模型路径 |
+| `--eval_split` | val_unseen | 评估数据集划分 |
+| `--num_frames` | 32 | 窗口大小（需与训练一致） |
+| `--num_history` | 8 | 历史帧采样数（需与训练一致） |
+| `--distributed` | False | 启用分布式评估 |
+| `--save_video` | False | 保存导航轨迹的可视化视频 |
+| `--output_dir` | ./results/eval | 结果保存目录 |
+
+### 推理流程
+
+```
+VLNEvaluator.eval_episode()
+       ↓
+while not episode_over:
+    ├─ 收集 RGB 观测 → rgb_list
+    ├─ if action_seq 为空:
+    │   ├─ 采样历史帧 (均匀采样)
+    │   ├─ 构建 messages（与训练格式一致）
+    │   │   ├─ system: 任务描述 + 历史 <image> tokens
+    │   │   └─ user: "{conjunction}<image>."
+    │   ├─ template.encode() → model inputs
+    │   ├─ model.generate() → "↑↑←→"
+    │   └─ parse_actions() → action_seq
+    └─ env.step(action_seq.pop(0))
+       ↓
+返回 metrics: success, spl, oracle_success, ...
+```
+
+### 输出指标
+
+| 指标 | 说明 |
+|------|------|
+| Success Rate (SR) | 到达目标点 (≤3m) 的比例 |
+| SPL | 路径效率加权成功率 |
+| Oracle Success (OS) | 轨迹中任一点到达目标的比例 |
+| Navigation Error (NE) | 到目标的平均距离 |
+
+### 视频可视化
+
+当启用 `--save_video` 参数时，评估过程会为每个 episode 生成可视化视频，包含：
+- **RGB 观测**：第一人称视角图像
+- **Top-down 地图**：俯视图，显示智能体轨迹、目标位置和最短路径
+- **导航信息**：当前位置、目标距离等
+
+视频保存位置：
+```
+<output_dir>/videos/<scene_id>_<episode_id>.mp4
+```
+
+---
+
+## 八、扩展指南
 
 ### 添加新的 VLN 参数
 
@@ -252,7 +361,7 @@ class StreamVLNTrainArguments(TrainArguments):
 
 ---
 
-## 八、常见问题
+## 九、常见问题
 
 ### Q1: 为什么模型直接继承不重写任何方法？
 
@@ -277,7 +386,7 @@ A: ms-swift 标准格式要求返回 PIL.Image，Template 会自动处理预处�
 
 ---
 
-## 九、参考资源
+## 十、参考资源
 
 - [ms-swift 官方文档](https://github.com/modelscope/ms-swift)
 - [Qwen2.5-VL 模型](https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct)

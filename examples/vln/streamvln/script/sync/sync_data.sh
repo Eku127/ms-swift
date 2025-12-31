@@ -6,7 +6,7 @@
 # 注意：路径末尾不要带 "/"，我们在逻辑中动态处理
 SRC_ROOT="/mnt/data3/jiangjiajun/dataset"
 DEST_USER="jiangjiajun"
-DEST_IP="10.246.152.73"
+DEST_IP="10.246.132.17"
 DEST_ROOT="/mnt/data3/jiangjiajun/dataset"
 # ==========================================
 

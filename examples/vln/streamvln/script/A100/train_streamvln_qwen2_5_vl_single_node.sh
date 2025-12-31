@@ -108,7 +108,7 @@ OUTPUT_DIR="output/${EXP_NAME}"
 
 SAVE_STEPS=500
 EVAL_STEPS=250
-SAVE_TOTAL_LIMIT=3
+SAVE_TOTAL_LIMIT=1
 LOGGING_STEPS=10
 
 # ============================================================================
@@ -204,6 +204,10 @@ torchrun \
     --eval_steps $EVAL_STEPS \
     --save_total_limit $SAVE_TOTAL_LIMIT \
     --logging_steps $LOGGING_STEPS \
+    --load_best_model_at_end true \
+    --metric_for_best_model loss \
+    --evaluation_strategy steps \
+    --save_strategy steps \
     --warmup_ratio $WARMUP_RATIO \
     --weight_decay $WEIGHT_DECAY \
     --lr_scheduler_type $LR_SCHEDULER_TYPE \
