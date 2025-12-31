@@ -117,9 +117,11 @@ EFFECTIVE_BATCH_SIZE=$((BATCH_SIZE * GRAD_ACCUM_STEPS * TOTAL_GPUS))
 EXP_NAME="streamvln-qwen2.5vl-${MODEL_SIZE}-full-${NUM_EPOCHS}ep-f${NUM_FRAMES}h${NUM_HISTORY}s${NUM_FUTURE_STEPS}-bs${EFFECTIVE_BATCH_SIZE}-lr${LEARNING_RATE}-${NNODES}node-${TIMESTAMP}"
 OUTPUT_DIR="output/${EXP_NAME}"
 
+# Checkpoint Management
+# Note: Without a validation dataset, load_best_model_at_end cannot work properly
+# For full training without validation, we just save checkpoints periodically
 SAVE_STEPS=500
-EVAL_STEPS=250
-SAVE_TOTAL_LIMIT=1
+SAVE_TOTAL_LIMIT=3  # Keep last 3 checkpoints for safety
 LOGGING_STEPS=10
 
 # ============================================================================
@@ -220,12 +222,8 @@ torchrun \
     --max_length $MAX_LENGTH \
     --output_dir $OUTPUT_DIR \
     --save_steps $SAVE_STEPS \
-    --eval_steps $EVAL_STEPS \
     --save_total_limit $SAVE_TOTAL_LIMIT \
     --logging_steps $LOGGING_STEPS \
-    --load_best_model_at_end true \
-    --metric_for_best_model loss \
-    --evaluation_strategy steps \
     --save_strategy steps \
     --warmup_ratio $WARMUP_RATIO \
     --weight_decay $WEIGHT_DECAY \
