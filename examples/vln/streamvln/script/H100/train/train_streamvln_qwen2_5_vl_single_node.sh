@@ -2,7 +2,7 @@
 # StreamVLN Single-Node Training Script - Qwen2.5-VL (ms-swift)
 # 
 # Usage:
-#   bash examples/vln/streamvln/script/H100/train_streamvln_qwen2_5_vl_single_node.sh
+#   bash examples/vln/streamvln/script/H100/train/train_streamvln_qwen2_5_vl_single_node.sh
 #
 # This script supports single-node training with configurable GPU count.
 
@@ -40,6 +40,7 @@ VLN_DATA_PATHS=(
     "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/R2R"
     "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/RxR_new"
     "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/EnvDrop"
+    "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/ScaleVLN"
 )
 VLN_DATA_PATH=$(IFS=','; echo "${VLN_DATA_PATHS[*]}")
 
@@ -58,7 +59,7 @@ NUM_EPOCHS=1
 LEARNING_RATE=2e-5
 BATCH_SIZE=8
 GRAD_ACCUM_STEPS=1
-MAX_LENGTH=16384
+MAX_LENGTH=32768 # 32768 for 7b
 
 # Model Freezing
 FREEZE_VIT=false
@@ -80,6 +81,7 @@ LR_SCHEDULER_TYPE="cosine_with_min_lr"
 LR_SCHEDULER_KWARGS='{"min_lr":1.85e-05}'
 
 # Attention Implementation
+# ATTN_IMPL="sdpa"  # flash_attn, sdpa, or eager
 ATTN_IMPL="flash_attn"  # flash_attn, sdpa, or eager
 
 # ============================================================================
@@ -109,7 +111,7 @@ OUTPUT_DIR="output/${EXP_NAME}"
 
 SAVE_STEPS=500
 EVAL_STEPS=250
-SAVE_TOTAL_LIMIT=3
+SAVE_TOTAL_LIMIT=1
 LOGGING_STEPS=10
 
 # ============================================================================
@@ -161,8 +163,11 @@ echo "=========================================="
 # ============================================================================
 # Build Arguments
 # ============================================================================
+# Calculate ms-swift root directory
+# Script is at: examples/vln/streamvln/script/H100/train/train_streamvln_qwen2_5_vl_single_node.sh
+# Need to go up 7 levels to reach ms-swift root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MS_SWIFT_ROOT="$(cd "$SCRIPT_DIR/../../../../.." && pwd)"
+MS_SWIFT_ROOT="$(cd "$SCRIPT_DIR/../../../../../../" && pwd)"
 
 # DeepSpeed argument
 DEEPSPEED_ARG=""
@@ -207,6 +212,10 @@ torchrun \
     --eval_steps $EVAL_STEPS \
     --save_total_limit $SAVE_TOTAL_LIMIT \
     --logging_steps $LOGGING_STEPS \
+    --load_best_model_at_end true \
+    --metric_for_best_model loss \
+    --evaluation_strategy steps \
+    --save_strategy steps \
     --warmup_ratio $WARMUP_RATIO \
     --weight_decay $WEIGHT_DECAY \
     --lr_scheduler_type $LR_SCHEDULER_TYPE \
