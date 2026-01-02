@@ -40,7 +40,7 @@ VLN_DATA_PATHS=(
     "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/R2R"
     "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/RxR_new"
     "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/EnvDrop"
-    "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/ScaleVLN"
+    # "/mnt/data3/jiangjiajun/dataset/streamvln_datasets/trajectory_data/ScaleVLN"
 )
 VLN_DATA_PATH=$(IFS=','; echo "${VLN_DATA_PATHS[*]}")
 
