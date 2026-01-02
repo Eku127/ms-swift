@@ -124,6 +124,13 @@ SWANLAB_PROJECT="StreamVLN"
 SWANLAB_EXP_NAME="${EXP_NAME}"
 SWANLAB_MODE="cloud"
 
+# Enterprise WeChat (WXWork) Notification Configuration
+# Reference: https://docs.swanlab.cn/plugin/notification-wxwork.html
+USE_WXWORK_NOTIFICATION=true
+SWANLAB_NOTIFICATION_METHOD="wxwork"
+SWANLAB_WEBHOOK_URL="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=d78d3128-7b16-4bf1-a6a7-403bf0915fe0"  # Replace with your actual webhook URL
+SWANLAB_SECRET=""  # Optional: set if your webhook requires secret
+
 # ============================================================================
 # Environment Setup
 # ============================================================================
@@ -160,6 +167,14 @@ echo "Acceleration:"
 echo "  padding_free: $PADDING_FREE"
 echo "  use_liger_kernel: $USE_LIGER_KERNEL"
 echo "  dataloader_prefetch: $DATALOADER_PREFETCH_FACTOR"
+echo "------------------------------------------"
+echo "SwanLab:"
+echo "  Project: $SWANLAB_PROJECT"
+echo "  Experiment: $SWANLAB_EXP_NAME"
+if [ "$USE_WXWORK_NOTIFICATION" = true ]; then
+    echo "  WXWork Notification: Enabled"
+    echo "  Webhook URL: ${SWANLAB_WEBHOOK_URL:0:20}..."  # Show first 20 chars
+fi
 echo "=========================================="
 
 # ============================================================================
@@ -179,6 +194,14 @@ DEEPSPEED_ARG=""
 SWANLAB_ARGS=""
 if [ "$USE_SWANLAB" = true ]; then
     SWANLAB_ARGS="--report_to swanlab --swanlab_project $SWANLAB_PROJECT --swanlab_exp_name $SWANLAB_EXP_NAME --swanlab_mode $SWANLAB_MODE"
+    
+    # Add WXWork notification if enabled
+    if [ "$USE_WXWORK_NOTIFICATION" = true ]; then
+        SWANLAB_ARGS="$SWANLAB_ARGS --swanlab_notification_method $SWANLAB_NOTIFICATION_METHOD --swanlab_webhook_url $SWANLAB_WEBHOOK_URL"
+        if [ -n "$SWANLAB_SECRET" ]; then
+            SWANLAB_ARGS="$SWANLAB_ARGS --swanlab_secret $SWANLAB_SECRET"
+        fi
+    fi
 fi
 
 # Attention implementation argument
